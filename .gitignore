@@ -1,13 +1,3 @@
-# Ignore everything
-*
-
-# Except...
-!.gitignore
-!LICENSE
-!README.md
-!src
-!etl_pipeline.py
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
