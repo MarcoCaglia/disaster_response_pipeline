@@ -25,7 +25,7 @@ class MessageWrangler():
 
         full_data.drop_duplicates(inplace=True)
 
-        conn = sqlite3.connect(path_to_db)
+        conn = xsqlite3.connect(path_to_db)
 
         full_data.to_sql('messages_info', conn)
 
