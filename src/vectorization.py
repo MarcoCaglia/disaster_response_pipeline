@@ -1,21 +1,24 @@
-import pandas as pd
 import sqlite3
-import pprint
-import nltk
 import re
-import pickle
-import multiprocessing
-import gensim.models.word2vec as w2v
-from tqdm import tqdm
+import pandas as pd
+from sklearn.model_selection import train_test_split
 
-class Vectorizor():
+
+class Vectorizer():
     def __init__(self, path_to_db):
-        self.data = self._get_data(path_to_db)
+        data = self._get_data(path_to_db)
+        data.message = data.message.map(self._clean_string)
 
-def _get_data(self, path):
-    conn = sqlite3.connect(path)
-    query = 'SELECT * FROM data'
-    return pd.read_sql(query, con=conn)
 
-def _get_tokenizer(self):
-    pass
+    def _clean_string(self, string):
+        delete_punctuation = re.compile('[^a-zA-Z0-9]')
+        clean_string = re.sub(delete_punctuation, ' ', string)
+        return clean_string
+
+
+    def _get_data(self, path):
+        connection = sqlite3.connect(path)
+        query = 'SELECT * FROM data'
+        data = pd.read_sql(query, connection)
+
+        return data
