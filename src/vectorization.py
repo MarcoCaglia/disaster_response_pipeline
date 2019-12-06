@@ -17,6 +17,11 @@ class Vectorizer():
                                                             )
         X_train = self._label_messages(X_train, 'train')
         X_test = self._label_messages(X_test, 'test')
+        y_train, y_test = self._clean_target(y_train, y_test)
+
+    def _clean_target(self, y1, y2):
+        for col in y1.columns:
+            y1[col] = ###### CURRENT
 
     def _label_messages(self, column, label_type):
         labeled = [TaggedDocument(cell.lower().split(),
