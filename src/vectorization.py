@@ -7,6 +7,11 @@ from gensim.models.doc2vec import TaggedDocument
 from gensim.models import Doc2Vec as d2v
 from tqdm import tqdm
 import numpy as np
+import pickle
+
+class InvalidParametersError(Exception):
+    pass
+
 
 class Vectorizer():
     def __init__(self, path_to_db):
@@ -27,7 +32,6 @@ class Vectorizer():
         drop_list = [col for col in data.columns if data[col].nunique() < 2]
         data.drop(drop_list, axis=1, inplace=True)
         return data
-
 
     def fit(self, dm=0, vector_size=300, window=7, sample=1e-3, negative=5, min_count=5, epochs=30, workers=1):
         documents = self.X_train + self.X_test
