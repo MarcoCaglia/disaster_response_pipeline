@@ -12,6 +12,7 @@ class Vectorizer():
     def __init__(self, path_to_db):
         data = self._get_data(path_to_db)
         data.message = data.message.map(self._clean_string)
+        data = self._clean_targets(data)
         X_train, X_test, y_train, y_test = train_test_split(data.message,
                                                             data.loc[
                                                                 :, 'related':
@@ -21,6 +22,12 @@ class Vectorizer():
         self.X_train = self._label_messages(X_train, 'train')
         self.X_test = self._label_messages(X_test, 'test')
         self.y_train, self.y_test = self._convert_to_numeric(y_train, y_test)
+
+    def _clean_targets(self, data):
+        drop_list = [col for col in data.columns if data[col].nunique() < 2]
+        data.drop(drop_list, axis=1, inplace=True)
+        return data
+
 
     def fit(self, dm=0, vector_size=300, window=7, sample=1e-3, negative=5, min_count=5, epochs=30, workers=1):
         documents = self.X_train + self.X_test
