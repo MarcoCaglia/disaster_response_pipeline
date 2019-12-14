@@ -33,7 +33,7 @@ class Vectorizer():
         data.drop(drop_list, axis=1, inplace=True)
         return data
 
-    def fit(self, dm=0, vector_size=300, window=7, sample=1e-3, negative=5, min_count=5, epochs=30, workers=1):
+    def transform(self, dm=0, vector_size=300, window=7, sample=1e-3, negative=5, min_count=5, epochs=30, workers=1):
         documents = self.X_train + self.X_test
         self.model = d2v(dm=dm, vector_size=vector_size, window=window, sample=sample, negative=negative, min_count=min_count, workers=workers)
         self.model.build_vocab(documents)
