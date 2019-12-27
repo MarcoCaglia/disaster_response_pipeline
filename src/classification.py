@@ -54,7 +54,7 @@ class MessageCategorizer():
             )
             model_cv.fit(X_train, y_train)
             predictions.append(model_cv.predict(X_test))
-            models_fit.append(model[model].set_params(**model_cv.best_params_))
+            models_fit.append(models[model].set_params(**model_cv.best_params_))
         
         return models_fit, np.mean([self.scorer(y_test, prediction) for
                                     prediction in predictions])
@@ -93,7 +93,7 @@ class MessageCategorizer():
 
     def save_model(self, path):
         with open(path, 'wb') as f:
-            pickle.dump(meta_model, f)
+            pickle.dump(self.meta_model, f)
 
     def _make_scorer(self):
         scorer = lambda y_true, y_pred: np.mean([f1_score(y_true.values[:, i], y_pred[:, i],
