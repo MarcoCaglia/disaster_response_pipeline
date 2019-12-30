@@ -48,7 +48,7 @@ class MessageWrangler():
 
         new_df.iloc[:, 1:] = new_df.iloc[:, 1:].applymap(self._get_last_digit)
 
-        return new_df
+        return new_df.drop(['original', 'genre', 'index', 'id'], axis=1)
 
 
 def load_messages_to_db(path_to_all_messages,
