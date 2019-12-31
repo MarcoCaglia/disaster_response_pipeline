@@ -14,6 +14,8 @@ from sklearn.ensemble import (RandomForestClassifier,
                               AdaBoostClassifier,
                               GradientBoostingClassifier)
 import xgboost as xgb
+import os
+import pickle
 
 
 class ParameterNotStringError(Exception):
@@ -25,6 +27,10 @@ class UnknownMethodError(Exception):
 
 
 class ModelNotImplementedError(Exception):
+    pass
+
+
+class NotFittedOrIllDefinedError(Exception):
     pass
 
 
@@ -40,13 +46,12 @@ class DisasterResponsePipeline:
 
         self.report = {
             'vectorized': False,
-            'LogReg_score': None,
+            'LogisticRegression_score': None,
             'SVC_score': None,
             'RandForest_score': None,
             'AdaBoost_score': None,
             'GradBoost_score': None,
             'XGBoost_score': None,
-            'MetaModel_score': None,
         }
 
         self.scorer = make_scorer(scorer)
@@ -56,13 +61,12 @@ class DisasterResponsePipeline:
         self.y_test = None
         self.labels = None
         self.models = {
-            'LogReg': MultiOutputClassifier(LogisticRegression()),
+            'LogisticRegression': MultiOutputClassifier(LogisticRegression()),
             'SVC': MultiOutputClassifier(SVC()),
             'AdaBoost': MultiOutputClassifier(AdaBoostClassifier()),
             'GradBoost': MultiOutputClassifier(GradientBoostingClassifier()),
             'RandForest': MultiOutputClassifier(RandomForestClassifier()),
             'XGBoost': MultiOutputClassifier(xgb.XGBClassifier()),
-            'MetaModel': MultiOutputClassifier(xgb.XGBClassifier())
         }
 
     def _load_messages(self, message_path, categories_path, folder):
@@ -92,26 +96,42 @@ class DisasterResponsePipeline:
 
         self.report['vectorized'] = method
 
+    def _fit_meta_model(self, n_jobs):
+        models = [self.models[model] for model in self.models
+                    if self.report[model + '_score'] and model != 'XGBoost']
+        if len(models) < 2:
+            raise NotFittedOrIllDefinedError
+        X_meta_train = np.hstack([model.predict(self.X_train) for
+                                  model in models])
+        X_meta_test = np.hstack([model.predict(self.X_test) for
+                                 model in models])
+        self.models['XGBoost'].fit(X_meta_train, self.y_train)
+        score = self.scorer(self.models['XGBoost'], X_meta_test, self.y_test)
+        self.report['XGBoost_score'] = score
+
     def fit_model(self, model, optimize=False, n_jobs=1, **kwargs):
         if model not in self.models:
             raise ModelNotImplementedError
-        if optimize:
-            model_cv = GridSearchCV(self.models[model],
-                                    param_grid=self._get_param_grid,
-                                    scoring=self.scorer,
-                                    n_jobs=n_jobs,
-                                    **kwargs
-                                    )
-            self.report[model + '_score'] = self.scorer(model_cv,
-                                                        self.X_test,
-                                                        self.y_test)
-            self.models[model] = model_cv
+        if model=='XGBoost':
+            self._fit_meta_model(n_jobs)
         else:
-            self.models[model].n_jobs = n_jobs
-            self.models[model].fit(self.X_train, self.y_train)
-            self.report[model + '_score'] = self.scorer(self.models[model],
-                                                        self.X_test,
-                                                        self.y_test)
+            if optimize:
+                model_cv = GridSearchCV(self.models[model],
+                                        param_grid=self._get_param_grid,
+                                        scoring=self.scorer,
+                                        n_jobs=n_jobs,
+                                        **kwargs
+                                        )
+                self.report[model + '_score'] = self.scorer(model_cv,
+                                                            self.X_test,
+                                                            self.y_test)
+                self.models[model] = model_cv
+            else:
+                self.models[model].n_jobs = n_jobs
+                self.models[model].fit(self.X_train, self.y_train)
+                self.report[model + '_score'] = self.scorer(self.models[model],
+                                                            self.X_test,
+                                                            self.y_test)
 
     def _get_param_grid(self, label):
         param_grid = {
@@ -120,7 +140,13 @@ class DisasterResponsePipeline:
                 'estimator__C': [0.1, 0.25, 0.5, 0.75, 0.9],
                 'estimator__solver': ['newton-cg', 'lbfgs', 'sag', 'saga']
             },
-            # 'SVC': {},
+            'RandForest': {
+                'estimator__n_estimators': [10, 100, 500]
+            },
+            'SVC': {
+                'estimator__gamma': ['auto', 'scale'],
+                'estimator__C': np.logspace(1*10**-3, 1*10**3, 3)
+            },
             'AdaBoost': {
                 'estimator__base_estimator': [
                     DecisionTreeClassifier(max_depth=50),
@@ -134,11 +160,15 @@ class DisasterResponsePipeline:
         }
 
         return param_grid[label]
+    
+    def checkpoint(self, name, folder=os.getcwd()):
+        with open(folder + name, 'wb') as f:
+            pickle.dump(self, f)
 
 
 def scorer(y, y_pred):
     score = np.mean(
         [f1_score(y[:, i], y_pred[:, i], average='weighted') for i in
-         range(y.shape[0])]
+            range(y.shape[0])]
     )
     return score
